@@ -3,13 +3,20 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
-const bodyParser = require('body-parser')
 const cors = require('cors')
+
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
+const tutorialRouter =  require("./routes/tutorials")
+const TagRouter = require('./routes/tags')
+const passport = require('passport')
+
 
 var app = express();
+
+
+
 
 var corsOptions = {
   origin: "http://localhost:8081"
@@ -17,8 +24,6 @@ var corsOptions = {
 
 app.use(cors(corsOptions));
 
-// parse requests of content-type - application/json
-app.use(bodyParser.json());
 
 
 // view engine setup
@@ -38,12 +43,18 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // app.use(cookieParser());
+app.use(passport.initialize())
 
 
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 
 app.use(express.static(path.join(__dirname, 'public')));
+
+
+app.use('/api/tutorials', tutorialRouter)
+app.use('/api/tags', tutorialRouter)
+
 
 
 // catch 404 and forward to error handler
