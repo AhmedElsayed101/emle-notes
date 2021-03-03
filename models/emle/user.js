@@ -1,5 +1,8 @@
+const bcrypt = require('bcrypt-nodejs');
+
+
 module.exports = (sequelize, Sequelize) => {
-  const User = sequelize.define("user", {
+  const Emle_user = sequelize.define("emle_user", {
     name: {
       type: Sequelize.STRING,
       allowNull: false,
@@ -7,6 +10,7 @@ module.exports = (sequelize, Sequelize) => {
     email: {
       type: Sequelize.STRING,
       allowNull: false,
+      unique: true,
     },
     password: {
       type: Sequelize.STRING,
@@ -37,6 +41,18 @@ module.exports = (sequelize, Sequelize) => {
       type: Sequelize.STRING,
     },
   });
-
-  return Tutorial;
+  Emle_user.beforeSave((user, options) => {
+    if (user.changed('password')) {
+      user.password = bcrypt.hashSync(user.password, bcrypt.genSaltSync(10), null);
+    }
+  });
+  Emle_user.prototype.comparePassword = function (passw, cb) {
+    bcrypt.compare(passw, this.password, function (err, isMatch) {
+        if (err) {
+            return cb(err);
+        }
+        cb(null, isMatch);
+    });
+  }
+  return Emle_user;
 };

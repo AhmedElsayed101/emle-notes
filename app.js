@@ -7,9 +7,13 @@ const cors = require('cors')
 
 
 var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
+// var usersRouter = require('./routes/users');
 const tutorialRouter =  require("./routes/tutorials")
 const TagRouter = require('./routes/tags')
+const ParentRouter = require('./routes/emle/parents')
+const usersRouter = require('./routes/emle/users')
+
+
 const passport = require('passport')
 
 
@@ -32,6 +36,7 @@ app.set('view engine', 'jade');
 
 // set db
 const db = require("./models/index");
+const parentRouter = require('./routes/emle/parents');
 db.sequelize.sync();
 // db.sequelize.sync({ force: true })
 // .then(() => {
@@ -47,13 +52,14 @@ app.use(passport.initialize())
 
 
 app.use('/', indexRouter);
-app.use('/users', usersRouter);
+app.use('/api/users', usersRouter);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
 
 app.use('/api/tutorials', tutorialRouter)
 app.use('/api/tags', tutorialRouter)
+app.use('/api/parents', parentRouter)
 
 
 

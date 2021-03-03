@@ -27,5 +27,5 @@ module.exports = (sequelize, Sequelize) => {
     },
   });
 
-  return Tutorial;
+  return Lesson_upload;
 };

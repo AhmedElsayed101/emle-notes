@@ -10,6 +10,6 @@ module.exports = (sequelize, Sequelize) => {
       },
     });
   
-    return Tutorial;
+    return Crr_topic;
   };
   
