@@ -4,13 +4,14 @@ var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 const cors = require('cors')
+const dotenv = require('dotenv');
+dotenv.config();
 
+// console.log('DATA_URI', process.env.DATABASE_URL)
 
 var indexRouter = require('./routes/index');
 // var usersRouter = require('./routes/users');
-const tutorialRouter =  require("./routes/tutorials")
-const TagRouter = require('./routes/tags')
-const ParentRouter = require('./routes/emle/parents')
+const parentRouter = require('./routes/emle/parents')
 const usersRouter = require('./routes/emle/users')
 
 
@@ -36,7 +37,6 @@ app.set('view engine', 'jade');
 
 // set db
 const db = require("./models/index");
-const parentRouter = require('./routes/emle/parents');
 db.sequelize.sync();
 // db.sequelize.sync({ force: true })
 // .then(() => {
@@ -56,9 +56,6 @@ app.use('/api/users', usersRouter);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-
-app.use('/api/tutorials', tutorialRouter)
-app.use('/api/tags', tutorialRouter)
 app.use('/api/parents', parentRouter)
 
 

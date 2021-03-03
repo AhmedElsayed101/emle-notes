@@ -1,19 +1,50 @@
 const dbConfig = require("../config/db-config");
 
 const Sequelize = require("sequelize");
-const sequelize = new Sequelize(dbConfig.DB, dbConfig.USER, dbConfig.PASSWORD, {
-  host: dbConfig.HOST,
-  dialect: dbConfig.dialect,
-  operatorsAliases: "0",
+// const sequelize = new Sequelize(dbConfig.DB, dbConfig.USER, dbConfig.PASSWORD,
+//     {
+//       host: dbConfig.HOST,
+//       dialect: dbConfig.dialect,
+//       operatorsAliases: "0",
 
-  pool: {
-    max: dbConfig.pool.max,
-    min: dbConfig.pool.min,
-    acquire: dbConfig.pool.acquire,
-    idle: dbConfig.pool.idle,
-  },
-  logging: false
-});
+//       pool: {
+//         max: dbConfig.pool.max,
+//         min: dbConfig.pool.min,
+//         acquire: dbConfig.pool.acquire,
+//         idle: dbConfig.pool.idle,
+//       },
+//       logging: false
+//     }
+// );
+
+const DATABASE_URL = process.env.DATABASE_URL
+// const DATABASE = process.env.DATABASE
+// const HOST = process.env.HOST
+// const USER = process.env.USER
+// const PASSWORD = process.env.PASSWORD
+
+const sequelize = new Sequelize(
+  DATABASE_URL,
+  {
+    url: process.env.DATABASE_URL,
+    dialect: 'postgres',
+    "dialectOptions": {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false // <<<<<<< YOU NEED THIS
+      }
+    },
+    pool: {
+      max: dbConfig.pool.max,
+      min: dbConfig.pool.min,
+      acquire: dbConfig.pool.acquire,
+      idle: dbConfig.pool.idle,
+    },
+    logging: false
+  }
+);
+
+
 
 // const DATABASE_URL = 'postgres://localhost:5432/YOUR_DB_NAME'
 
