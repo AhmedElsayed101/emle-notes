@@ -12,6 +12,9 @@ const Chapter = db.chapters
 const Crr_topic = db.crr_topics
 const Lesson = db.lesson_uploads
 const Chapter_discount = db.chapters_discount
+const User_save = db.users_save
+const User_purchase = db.users_purchase
+const User = db.emleUsers
 
 const Op = db.Sequelize.Op;
 
@@ -91,8 +94,6 @@ parentRouter.route('/:parentId')
                 res.json(data);
             }
             else{
-                // err = new Error('Dish ' + id + ' not found');
-                // err.status = 404;
                 res.status(404).json({
                     error : 'Parent ' + id + ' not found'
                 })
@@ -139,23 +140,186 @@ parentRouter.route('/:parentId')
     Parent.destroy({
         where: { id: id }
       })
-        .then(num => {
-          if (num == 1) {
-            res.send({
-              message: "Parent was deleted successfully!"
-            });
-          } else {
-            res.send({
-              message: `Cannot delete Parent with id=${id}. Maybe Parent was not found!`
-            });
-          }
-        })
-        .catch(err => {
-          res.status(500).send({
-            message: "Could not delete Parent with id=" + id
+      .then(num => {
+        if (num == 1) {
+          res.send({
+            message: "Parent was deleted successfully!"
           });
+        } else {
+          res.send({
+            message: `Cannot delete Parent with id=${id}. Maybe Parent was not found!`
+          });
+        }
+      })
+      .catch(err => {
+        res.status(500).send({
+          message: "Could not delete Parent with id=" + id
+        });
     });
 
+
+})
+
+
+// Your route
+
+parentRouter.route('/:parentId/chapters')
+.get(authenticate.verifyUser, (req, res, next) => {
+  const parentId = req.params.parentId
+  const emleUserId = req.user.id
+  
+  Crr_chapter.findAll({
+    where : {
+      parentId : parentId
+    },
+  })
+  .then((data) => {
+    if(data){
+      return data.map(crr => crr.id)
+    }
+  })
+  .then(async (crr_ids) => {
+    const chapters_res = []
+    for(const id of crr_ids){
+      await Chapter.findAll({
+        where: {
+          crrChapterId : id
+        },
+        attributes: 
+          [
+            ['id', 'chapterId'],
+            ['name', 'chapterName'],
+            ['image', 'chapterImage'],
+            ['price', 'oldPrice'],
+            'emleUserId'
+          ],
+        
+      })
+      .then(async chapters => {
+        for(const chapter of chapters){
+          await Chapter_discount.findOne({
+            where:{
+              chapterId : chapter.dataValues.chapterId
+            },
+        
+          })
+          .then(chapter_dis => {
+            if(chapter_dis){
+              chapter.dataValues.newPrice = chapter_dis.discount_value * chapter.dataValues.oldPrice
+              chapter.dataValues.discount = chapter_dis.discount_value
+            }
+            else{
+              chapter.dataValues.newPrice = chapter.dataValues.oldPrice
+              chapter.dataValues.discount = 1
+            }
+
+          })
+          .catch((err) => res.status(404).json({
+            err : err.message
+          }))
+          await User_save.findOne({
+            where:{
+              chapterId : chapter.dataValues.chapterId,
+              emleUserId : emleUserId
+            },
+          })
+          .then(user_save => {
+            if(user_save){
+              chapter.dataValues.favorite = 1
+            }
+            else{
+              chapter.dataValues.favorite = 0
+            }
+
+          })
+          .catch((err) => res.status(500).json({
+            err : err.message
+          }))
+          await User_purchase.findOne({
+            where:{
+              chapterId : chapter.dataValues.chapterId,
+              emleUserId : emleUserId
+            },
+          })
+          .then(user_purchase => {
+            if(user_purchase){
+              chapter.dataValues.enrolled = 1
+            }
+            else{
+              chapter.dataValues.enrolled = 0
+            }
+
+          })
+          .catch((err) => res.status(500).json({
+            err : err.message
+          }))
+          await User.findOne({
+            where:{
+              id : chapter.emleUserId
+            },
+          })
+          .then(user => {
+            if(user){
+              chapter.dataValues.DoctorName = user.name
+              chapter.dataValues.DoctorImage = user.image
+            }
+            else{
+              chapter.dataValues.enrolled = 0
+            }
+
+          })
+          .catch((err) => res.status(500).json({
+            err : err.message
+          }))
+          await Crr_topic.findAll({
+            where:{
+              chapterId : chapter.dataValues.chapterId
+            },
+          })
+          .then(topics => {
+            chapter.dataValues.numOfTopics = topics.length
+          })
+          .catch((err) => res.status(500).json({
+            err : err.message
+          }))
+
+
+
+          chapters_res.push(chapter)
+        }
+      })
+    }
+
+    return chapters_res
+  })
+  .then(chapters_res => {
+    Parent.findByPk(parentId,{
+      
+      attributes: [
+          ['id', 'moduleId'],
+          ['name', 'moduleName']
+        ]
+      }
+    )
+    .then((parent) => {
+      if(parent){
+        parent.dataValues.chapters = chapters_res
+        res.json(parent);
+      }
+      else{
+        res.status(404).json({
+          err : `Parent ${parentId} not found!`
+        })
+      }
+    })
+    .catch((err) => res.status(500).json({
+      err : err.message
+    }))
+    
+  })
+  .catch((err) => res.status(500).json({
+    err : err.message
+  }))
 
 })
 
@@ -165,12 +329,10 @@ parentRouter.route('/:parentId')
 parentRouter.route('/:parentId/crr_chapters')
 .get((req, res, next) => {
   const parentId = req.params.parentId
-  // console.log('parentId', parentId)
-  // request_body = req.body
+
   Parent.findByPk(parentId, { include: ["crr_chapters"] })
     .then((parent) => {
       if(parent){
-        // console.log('parent', parent)
         res.json(parent);
       }
       else{
@@ -189,9 +351,6 @@ parentRouter.route('/:parentId/crr_chapters')
     res.status(500).json(">> Error while finding parent: ");
   });
 
-
-
-
 })
 .post((req, res, next) => {
   const parentId = req.params.parentId
@@ -203,7 +362,6 @@ parentRouter.route('/:parentId/crr_chapters')
     parentId: parentId,
   })
     .then((crr_chapter) => {
-      // console.log(">> Created crr_chapter: " + JSON.stringify(crr_chapter, null, 4));
       res.send(crr_chapter);
     })
     .catch((err) => {
@@ -211,7 +369,6 @@ parentRouter.route('/:parentId/crr_chapters')
         message: "Error while creating crr_chapter " + err,
         error : err.message
       });
-      // console.log(">> Error while creating crr_chapter: ", err);
     });
 
 
@@ -253,8 +410,6 @@ parentRouter.route('/:parentId/crr_chapters/:crr_chapterId')
             res.send(data);
         }
         else{
-            // err = new Error('Dish ' + id + ' not found');
-            // err.status = 404;
             res.status(404).json({
                 error : 'Crr_chapter ' + crr_chapterId + ' not found'
             })
@@ -345,21 +500,7 @@ parentRouter.route('/:parentId/crr_chapters/:crr_chapterId/chapters')
 
   const parentId = req.params.parentId
   const crr_chapterId = req.params.crr_chapterId
-  // console.log('parentId', parentId)
-  // request_body = req.body
-  // Parent.findOne({
-  //   where: {
-  //     id : parentId
-  //   },
-  //     include: [{
-  //       model: Crr_chapter,
-  //       as : "crr_chapters",
-  //       include: [{
-  //         model : Chapter,
-  //         as : "chapters"
-  //       }]
-  //     }]
-  //   })
+
   Crr_chapter.findOne({
     where: {
       id : crr_chapterId,
@@ -377,18 +518,18 @@ parentRouter.route('/:parentId/crr_chapters/:crr_chapterId/chapters')
       }
       else{
         res.status(404).json({
-          "message" : `Parent ${parentId} not found`
+          "message" : `Crr_chapter ${parentId} not found`
         })
       }
       
     })
     .catch((err) => {
       res.status(500).send({
-        message: "Error updating Crr_chapter with id=" + parentId,
+        message: "Error finding Crr_chapter with id=" + parentId,
         error : err.message
     });
       
-    res.status(500).json(">> Error while finding parent: ");
+    res.status(500).json(">> Error while finding Crr_chapter: ");
   });
 
 
@@ -415,15 +556,13 @@ parentRouter.route('/:parentId/crr_chapters/:crr_chapterId/chapters')
     emleUserId : emleUserId
   })
     .then((crr_chapter) => {
-      // console.log(">> Created crr_chapter: " + JSON.stringify(crr_chapter, null, 4));
       res.send(crr_chapter);
     })
     .catch((err) => {
       res.status(500).send({
-        message: "Error while creating crr_chapter " + err,
+        message: "Error while creating chapter ",
         error : err.message
       });
-      // console.log(">> Error while creating crr_chapter: ", err);
     });
 
 
@@ -437,12 +576,12 @@ parentRouter.route('/:parentId/crr_chapters/:crr_chapterId/chapters')
     truncate: false
   })
   .then(nums => {
-    res.send({ message: `${nums} Crr_chapters were deleted successfully!` });
+    res.send({ message: `${nums} chapters were deleted successfully!` });
   })
   .catch(err => {
     res.status(500).send({
       message:
-        err.message || "Some error occurred while removing all Crr_chapters."
+        err.message || "Some error occurred while removing all chapters."
     });
   });
 
@@ -472,14 +611,14 @@ parentRouter.route('/:parentId/crr_chapters/:crr_chapterId/chapters/:chapaterId'
             // err = new Error('Dish ' + id + ' not found');
             // err.status = 404;
             res.status(404).json({
-                error : 'Crr_chapter ' + crr_chapterId + ' not found'
+                error : 'Chapter ' + crr_chapterId + ' not found'
             })
         }
         
     })
     .catch(err => {
         res.status(500).send({
-            message: "Error retrieving Crr_chapter with id=" + crr_chapterId
+            message: "Error retrieving Chapter with id=" + crr_chapterId
     });
   });
 
@@ -491,7 +630,6 @@ parentRouter.route('/:parentId/crr_chapters/:crr_chapterId/chapters/:chapaterId'
   const crr_chapterId = req.params.crr_chapterId
   const emleUserId = req.user.id
 
-  // console.log('crr_chapterId', crr_chapterId)
   const data = req.body
   const crr_chapter = {
     name: data.name,
@@ -515,17 +653,17 @@ parentRouter.route('/:parentId/crr_chapters/:crr_chapterId/chapters/:chapaterId'
   .then(num => {
     if (num == 1) {
       res.send({
-        message: "Crr_chapter was updated successfully."
+        message: "Chapter was updated successfully."
       });
     } else {
       res.send({
-        message: `Cannot update Crr_chapter with id=${parentId}. Maybe Crr_chapter was not found or req.body is empty!`
+        message: `Cannot update Chapter with id=${chapaterId}. Maybe Chapter was not found or req.body is empty!`
       });
     }
   })
   .catch(err => {
     res.status(500).send({
-      message: "Error updating Crr_chapter with id=" + id
+      message: "Error updating Chapter with id=" + chapaterId
     });
 });
 
@@ -545,17 +683,17 @@ parentRouter.route('/:parentId/crr_chapters/:crr_chapterId/chapters/:chapaterId'
     .then(num => {
       if (num == 1) {
         res.send({
-          message: "Crr_chapter was deleted successfully!"
+          message: "Chapter was deleted successfully!"
         });
       } else {
         res.send({
-          message: `Cannot delete Crr_chapter with id=${id}. Maybe Crr_chapter was not found!`
+          message: `Cannot delete Chapter with id=${chapaterId}. Maybe Chapter was not found!`
         });
       }
     })
     .catch(err => {
       res.status(500).send({
-        message: "Could not delete Crr_chapter with id=" + id
+        message: "Could not delete Chapter with id=" + chapaterId
       });
   });
 
@@ -570,21 +708,7 @@ parentRouter.route('/crr_chapters/:crr_chapterId/chapters/:chapterId/crr_topics'
 
   const chapterId = req.params.chapterId
   const crr_chapterId = req.params.crr_chapterId
-  // console.log('parentId', parentId)
-  // request_body = req.body
-  // Parent.findOne({
-  //   where: {
-  //     id : parentId
-  //   },
-  //     include: [{
-  //       model: Crr_chapter,
-  //       as : "crr_chapters",
-  //       include: [{
-  //         model : Chapter,
-  //         as : "chapters"
-  //       }]
-  //     }]
-  //   })
+
   Chapter.findOne({
     where: {
       id : chapterId,
@@ -597,23 +721,22 @@ parentRouter.route('/crr_chapters/:crr_chapterId/chapters/:chapterId/crr_topics'
     })
     .then((parent) => {
       if(parent){
-        // console.log('parent', parent)
         res.json(parent);
       }
       else{
         res.status(404).json({
-          "message" : `Parent ${parentId} not found`
+          "message" : `Chapter ${chapterId} not found`
         })
       }
       
     })
     .catch((err) => {
       res.status(500).send({
-        message: "Error updating Crr_chapter with id=" + chapterId,
+        message: "Error updating Chapter with id=" + chapterId,
         error : err.message
     });
       
-    res.status(500).json(">> Error while finding parent: ");
+    res.status(500).json(">> Error while finding Chapter: ");
   });
 
 
@@ -633,16 +756,14 @@ parentRouter.route('/crr_chapters/:crr_chapterId/chapters/:chapterId/crr_topics'
     crrChapterId : crr_chapterId,
     qr_code : data.qr_code
   })
-    .then((crr_chapter) => {
-      // console.log(">> Created crr_chapter: " + JSON.stringify(crr_chapter, null, 4));
-      res.send(crr_chapter);
+    .then((crr_topic) => {
+      res.send(crr_topic);
     })
     .catch((err) => {
       res.status(500).send({
-        message: "Error while creating crr_chapter " + err,
+        message: "Error while creating crr_topic ",
         error : err.message
       });
-      // console.log(">> Error while creating crr_chapter: ", err);
     });
 
 
@@ -660,12 +781,12 @@ parentRouter.route('/crr_chapters/:crr_chapterId/chapters/:chapterId/crr_topics'
     truncate: false
   })
   .then(nums => {
-    res.send({ message: `${nums} Crr_chapters were deleted successfully!` });
+    res.send({ message: `${nums} crr_topics were deleted successfully!` });
   })
   .catch(err => {
     res.status(500).send({
       message:
-        err.message || "Some error occurred while removing all Crr_chapters."
+        err.message || "Some error occurred while removing all crr_topics."
     });
   });
 
@@ -693,17 +814,16 @@ parentRouter.route('/crr_chapters/:crr_chapterId/chapters/:chapaterId/crr_topics
             res.send(data);
         }
         else{
-            // err = new Error('Dish ' + id + ' not found');
-            // err.status = 404;
+      
             res.status(404).json({
-                error : 'Crr_chapter ' + crr_chapterId + ' not found'
+                error : 'Crr_topic ' + crr_topicId + ' not found'
             })
         }
         
     })
     .catch(err => {
         res.status(500).send({
-            message: "Error retrieving Crr_chapter with id=" + crr_chapterId
+            message: "Error retrieving Crr_topic with id=" + crr_topicId
     });
   });
 
@@ -715,7 +835,6 @@ parentRouter.route('/crr_chapters/:crr_chapterId/chapters/:chapaterId/crr_topics
   const crr_chapterId = req.params.crr_chapterId
   const chapterId = req.params.chapaterId
 
-  // console.log('crr_chapterId', crr_chapterId)
   const data = req.body
   const crr_topic = {
     name: data.name,
@@ -734,17 +853,17 @@ parentRouter.route('/crr_chapters/:crr_chapterId/chapters/:chapaterId/crr_topics
   .then(num => {
     if (num == 1) {
       res.send({
-        message: "Crr_chapter was updated successfully."
+        message: "Crr_topic was updated successfully."
       });
     } else {
       res.send({
-        message: `Cannot update Crr_chapter with id=${parentId}. Maybe Crr_chapter was not found or req.body is empty!`
+        message: `Cannot update Crr_topic with id=${crr_topicId}. Maybe Crr_topic was not found or req.body is empty!`
       });
     }
   })
   .catch(err => {
     res.status(500).send({
-      message: "Error updating Crr_chapter with id=" + id
+      message: "Error updating Crr_topic with id=" + crr_topicId
     });
 });
 
@@ -766,17 +885,17 @@ parentRouter.route('/crr_chapters/:crr_chapterId/chapters/:chapaterId/crr_topics
     .then(num => {
       if (num == 1) {
         res.send({
-          message: "Crr_chapter was deleted successfully!"
+          message: "Crr_topic was deleted successfully!"
         });
       } else {
         res.send({
-          message: `Cannot delete Crr_chapter with id=${id}. Maybe Crr_chapter was not found!`
+          message: `Cannot delete Crr_topic with id=${crr_topicId}. Maybe Crr_topic was not found!`
         });
       }
     })
     .catch(err => {
       res.status(500).send({
-        message: "Could not delete Crr_chapter with id=" + id
+        message: "Could not delete Crr_topic with id=" + crr_topicId
       });
   });
 
@@ -809,18 +928,18 @@ parentRouter.route('/chapters/:chapterId/crr_topics/:crr_topicId/lessons')
       }
       else{
         res.status(404).json({
-          "message" : `Parent ${parentId} not found`
+          "message" : `Crr_topic ${crr_topicId} not found`
         })
       }
       
     })
     .catch((err) => {
       res.status(500).send({
-        message: "Error updating Crr_chapter with id=" + chapterId,
+        message: "Error finding Crr_topic with id=" + crr_topicId,
         error : err.message
     });
       
-    res.status(500).json(">> Error while finding parent: ");
+    res.status(500).json(">> Error while finding Crr_topic: ");
   });
 
 
@@ -846,16 +965,14 @@ parentRouter.route('/chapters/:chapterId/crr_topics/:crr_topicId/lessons')
     thumbnail : data.thumbnail,
    
   })
-    .then((crr_chapter) => {
-      // console.log(">> Created crr_chapter: " + JSON.stringify(crr_chapter, null, 4));
-      res.send(crr_chapter);
+    .then((lesson) => {
+      res.send(lesson);
     })
     .catch((err) => {
       res.status(500).send({
-        message: "Error while creating crr_chapter " + err,
+        message: "Error while creating Lesson ",
         error : err.message
       });
-      // console.log(">> Error while creating crr_chapter: ", err);
     });
 
 
@@ -873,12 +990,12 @@ parentRouter.route('/chapters/:chapterId/crr_topics/:crr_topicId/lessons')
     truncate: false
   })
   .then(nums => {
-    res.send({ message: `${nums} Crr_chapters were deleted successfully!` });
+    res.send({ message: `${nums} Lessons were deleted successfully!` });
   })
   .catch(err => {
     res.status(500).send({
       message:
-        err.message || "Some error occurred while removing all Crr_chapters."
+        err.message || "Some error occurred while removing all Lessons."
     });
   });
 
@@ -894,7 +1011,6 @@ parentRouter.route('/chapters/:chapaterId/crr_topics/:crr_topicId/lessons/:lesso
   const chapterId = req.params.chapaterId
 
 
-  console.log('crr_chapterId', crr_chapterId)
   Lesson.findOne({
       where : {
         id : lessonId,
@@ -907,17 +1023,15 @@ parentRouter.route('/chapters/:chapaterId/crr_topics/:crr_topicId/lessons/:lesso
             res.send(data);
         }
         else{
-            // err = new Error('Dish ' + id + ' not found');
-            // err.status = 404;
             res.status(404).json({
-                error : 'Crr_chapter ' + crr_chapterId + ' not found'
+                error : 'Lesson ' + lessonId + ' not found'
             })
         }
         
     })
     .catch(err => {
         res.status(500).send({
-            message: "Error retrieving Crr_chapter with id=" + crr_chapterId
+            message: "Error retrieving Lesson with id=" + lessonId
     });
   });
 
@@ -929,7 +1043,6 @@ parentRouter.route('/chapters/:chapaterId/crr_topics/:crr_topicId/lessons/:lesso
   const lessonId = req.params.lessonId
   const chapterId = req.params.chapaterId
 
-  // console.log('crr_chapterId', crr_chapterId)
   const data = req.body
   const lesson = {
     chapterId : chapterId,
@@ -953,17 +1066,17 @@ parentRouter.route('/chapters/:chapaterId/crr_topics/:crr_topicId/lessons/:lesso
   .then(num => {
     if (num == 1) {
       res.send({
-        message: "Crr_chapter was updated successfully."
+        message: "Lesson was updated successfully."
       });
     } else {
       res.send({
-        message: `Cannot update Crr_chapter with id=${parentId}. Maybe Crr_chapter was not found or req.body is empty!`
+        message: `Cannot update Lesson with id=${lessonId}. Maybe Lesson was not found or req.body is empty!`
       });
     }
   })
   .catch(err => {
     res.status(500).send({
-      message: "Error updating Crr_chapter with id=" + id
+      message: "Error updating Lesson with id=" + lessonId
     });
 });
 
@@ -985,17 +1098,17 @@ parentRouter.route('/chapters/:chapaterId/crr_topics/:crr_topicId/lessons/:lesso
     .then(num => {
       if (num == 1) {
         res.send({
-          message: "Crr_chapter was deleted successfully!"
+          message: "Lesson was deleted successfully!"
         });
       } else {
         res.send({
-          message: `Cannot delete Crr_chapter with id=${id}. Maybe Crr_chapter was not found!`
+          message: `Cannot delete Lesson with id=${lessonId}. Maybe Lesson was not found!`
         });
       }
     })
     .catch(err => {
       res.status(500).send({
-        message: "Could not delete Crr_chapter with id=" + id
+        message: "Could not delete Lesson with id=" + lessonId
       });
   });
 
@@ -1017,12 +1130,11 @@ parentRouter.route('/chapters/:chapterId/chapter_discounts')
         res.statusCode = 200
         res.setHeader('Content-Type', 'application/json')
         res.json(data)
-    // res.send(data);
     })
     .catch(err => {
         res.status(500).send({
             message:
-            err.message || "Some error occurred while retrieving parents."
+            err.message || "Some error occurred while retrieving Chapter_discounts."
         });
     });
 
@@ -1038,6 +1150,7 @@ parentRouter.route('/chapters/:chapterId/chapter_discounts')
         chapterId: chapterId,
         date : data.date,
         discount_value: data.discount_value,
+        type : data.type
     };
     // console.log('user_purchase', user_purchase)
     
@@ -1049,7 +1162,7 @@ parentRouter.route('/chapters/:chapterId/chapter_discounts')
         .catch(err => {
           res.status(500).send({
             message:
-              err.message || "Some error occurred while creating the User_purchase."
+              err.message || "Some error occurred while creating the Chapter_discounts."
           });
     });
 
@@ -1066,12 +1179,12 @@ parentRouter.route('/chapters/:chapterId/chapter_discounts')
         truncate: false
       })
         .then(nums => {
-          res.send({ message: `${nums} Parents were deleted successfully!` });
+          res.send({ message: `${nums} Chapter_discounts were deleted successfully!` });
         })
         .catch(err => {
           res.status(500).send({
             message:
-              err.message || "Some error occurred while removing all parents."
+              err.message || "Some error occurred while removing all Chapter_discount."
           });
     });
 
@@ -1127,17 +1240,17 @@ parentRouter.route('chapters/:chapterId/chapter_discounts/:chapter_discountId')
         .then(num => {
           if (num == 1) {
             res.send({
-              message: "User_discount was updated successfully."
+              message: "Chapter_discount was updated successfully."
             });
           } else {
             res.send({
-              message: `Cannot update User_discount with id=${user_purchaseId}. Maybe User_purchase was not found or req.body is empty!`
+              message: `Cannot update Chapter_discount with id=${id}. Maybe Chapter_discount was not found or req.body is empty!`
             });
           }
         })
         .catch(err => {
           res.status(500).send({
-            message: "Error updating User_discount with id=" + id
+            message: "Error updating Chapter_discount with id=" + id
           });
     });
 
@@ -1152,17 +1265,17 @@ parentRouter.route('chapters/:chapterId/chapter_discounts/:chapter_discountId')
         .then(num => {
           if (num == 1) {
             res.send({
-              message: "User_purchase was deleted successfully!"
+              message: "Chapter_discount was deleted successfully!"
             });
           } else {
             res.send({
-              message: `Cannot delete User_purchase with id=${id}. Maybe User_purchase was not found!`
+              message: `Cannot delete Chapter_discount with id=${id}. Maybe Chapter_discount was not found!`
             });
           }
         })
         .catch(err => {
           res.status(500).send({
-            message: "Could not delete User_purchase with id=" + id
+            message: "Could not delete Chapter_discount with id=" + id
           });
     });
 
@@ -1170,3 +1283,21 @@ parentRouter.route('chapters/:chapterId/chapter_discounts/:chapter_discountId')
 })
 
 module.exports = parentRouter
+
+
+
+  // console.log('parentId', parentId)
+  // request_body = req.body
+  // Parent.findOne({
+  //   where: {
+  //     id : parentId
+  //   },
+  //     include: [{
+  //       model: Crr_chapter,
+  //       as : "crr_chapters",
+  //       include: [{
+  //         model : Chapter,
+  //         as : "chapters"
+  //       }]
+  //     }]
+  //   })

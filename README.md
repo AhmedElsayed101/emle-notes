@@ -64,3 +64,45 @@ get, post, delete
 (users/user_discount)
 get, put, delete
 (users/user_discount/:user_discountId)
+
+
+get
+(parents/:parentId/chapters)
+
+login required >>>
+token >>> lasts for 10 hours
+
+
+
+{
+    "name": "crr_chapr-6",
+    "email": "email-1",
+    "password": "123",
+    "university": "university-1",
+    "grade" : "good",
+    "national_id" : "national_id",
+    "government" : "government",
+    "city" : "city",
+    "street" : "street",
+    "system" : "system",
+    "image" : "image2",
+    "price" : 5,
+    "about" : "kalsdfklasdfkl;asf;asklf",
+    "objective" : "alskdfklasflkasdflkasfdkl",
+    "state" : "slkdfklasdfkasklf",
+    "rate" : 4,
+    "date" : "2021-03-01",
+    "qr_code" : "hello from the other side",
+    "free" : 1,
+    "video" : "video",
+    "video_time" : "video_time",
+    "arrangement" : "arrangement",
+    "thumbnail" : "thumbnail",
+    "discount_value" : 5.5,
+    "orignal_price" : 200,
+    "parentId" : 3,
+    "chapterId": 4,
+    "type" : "typ",
+    "nature" : "naturee"
+}
+

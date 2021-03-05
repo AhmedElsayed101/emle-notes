@@ -1,24 +1,16 @@
 const passport = require('passport')
-// const LocalStrategy = require('passport-local').Strategy
 const db = require('./models/index')
 const User = db.emleUsers
 const JwtStrategy = require('passport-jwt').Strategy
 const ExtractJwt = require('passport-jwt').ExtractJwt
 const jwt = require('jsonwebtoken')
-// const FacebookTokenStrategy = require('passport-facebook-token')
 
-// const config = require('./config')
-// const f = require('session-file-store')
-
-// exports.local = passport.use(new LocalStrategy(User.authenticate()))
-// passport.serializeUser(User.serializeUser())
-// passport.deserializeUser(User.deserializeUser())
 
 const secretKey = "lskdflkasflksadklfklsdfs"
 
 exports.getToken = function (user) {
     return jwt.sign(user, secretKey, {
-        expiresIn : 3600
+        expiresIn : 36000
     })
 }
 
@@ -29,12 +21,10 @@ opts.jwtFromRequest = ExtractJwt.fromAuthHeaderAsBearerToken()
 opts.secretOrKey = secretKey
 
 exports.jwtPassport = passport.use(new JwtStrategy(opts, (jwt_paload, done) => {
-    // console.log('payload', jwt_paload)
     User.findOne(
         { where: { id: jwt_paload.id } }
     )
     .then(user => {
-        // console.log('user', user)
         if(user){
             return done(null, user)
         }

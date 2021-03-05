@@ -2,11 +2,8 @@ const express = require('express')
 const authenticate = require('../../authenticate')
 // const cors = require('./cors')
 const bodyParser = require('body-parser')
-// const bcrypt = require('bcrypt-nodejs');
 
 const db = require("../../models/index");
-const userPurchase = require('../../models/emle/user-purchase');
-// const { where } = require('sequelize/types');
 const User = db.emleUsers;
 const User_purchase = db.users_purchase
 const User_save = db.users_save
@@ -22,9 +19,6 @@ userRouter.post('/login', async function(req, res, next) {
     const data = req.body
     console.log('data', data)
     if (data.email && data.password) {
-      // we get the user with the name and save the resolved promise
-    //   returned
-    //   let user = await getUser({ name });
         User.findOne(
             { where: { email: data.email } }
         )
@@ -100,20 +94,20 @@ userRouter.post('/signup', function(req, res, next) {
 });
 
 
-userRouter.get('/logout', authenticate.verifyUser, (req ,res , next) => {
-    console.log('req.user', req.user.id)
-    if ( req.session ){
-      req.session.destroy()
-      res.clearCookie('session-id')
-      res.redirect('/')
-    }
-    else{
-      res.status(400).json({
-          "message": "You are not logged in !"
-      })
-    }
+// userRouter.get('/logout', authenticate.verifyUser, (req ,res , next) => {
+//     console.log('req.user', req.user.id)
+//     if ( req.session ){
+//       req.session.destroy()
+//       res.clearCookie('session-id')
+//       res.redirect('/')
+//     }
+//     else{
+//       res.status(400).json({
+//           "message": "You are not logged in !"
+//       })
+//     }
   
-})
+// })
 
 
 
@@ -130,7 +124,7 @@ userRouter.route('/user_purchase')
     .catch(err => {
         res.status(500).send({
             message:
-            err.message || "Some error occurred while retrieving parents."
+            err.message || "Some error occurred while retrieving User_purchases."
         });
     });
 
@@ -151,9 +145,8 @@ userRouter.route('/user_purchase')
         parentId : data.parentId,
         chapterId : data.chapterId
     };
-    console.log('user_purchase', user_purchase)
     
-      // Save user_purchase in the database
+    // Save user_purchase in the database
     User_purchase.create(user_purchase)
         .then(data => {
           res.json(data);
@@ -178,7 +171,7 @@ userRouter.route('/user_purchase')
         .catch(err => {
           res.status(500).send({
             message:
-              err.message || "Some error occurred while removing all parents."
+              err.message || "Some error occurred while removing all User_purchases."
           });
     });
 
@@ -197,8 +190,6 @@ userRouter.route('/user_purchase/:user_purchaseId')
                 res.json(data);
             }
             else{
-                // err = new Error('Dish ' + id + ' not found');
-                // err.status = 404;
                 res.status(404).json({
                     error : 'User_purchase ' + id + ' not found'
                 })
@@ -239,7 +230,7 @@ userRouter.route('/user_purchase/:user_purchaseId')
             });
           } else {
             res.send({
-              message: `Cannot update User_purchase with id=${user_purchaseId}. Maybe User_purchase was not found or req.body is empty!`
+              message: `Cannot update User_purchase with id=${id}. Maybe User_purchase was not found or req.body is empty!`
             });
           }
         })
@@ -292,7 +283,7 @@ userRouter.route('/user_save')
     .catch(err => {
         res.status(500).send({
             message:
-            err.message || "Some error occurred while retrieving parents."
+            err.message || "Some error occurred while retrieving User_saves."
         });
     });
 
@@ -310,19 +301,17 @@ userRouter.route('/user_save')
         emleUserId : emleUserId,
         parentId : data.parentId,
         chapterId : data.chapterId
-    };
-    // console.log('user_purchase', user_purchase)
-    
+    };    
       // Save user_purchase in the database
-      User_save.create(user_save)
-        .then(data => {
-          res.json(data);
-        })
-        .catch(err => {
-          res.status(500).send({
-            message:
-              err.message || "Some error occurred while creating the User_purchase."
-          });
+    User_save.create(user_save)
+      .then(data => {
+        res.json(data);
+      })
+      .catch(err => {
+        res.status(500).send({
+          message:
+            err.message || "Some error occurred while creating the User_save."
+        });
     });
 
 })
@@ -333,12 +322,12 @@ userRouter.route('/user_save')
         truncate: false
       })
         .then(nums => {
-          res.send({ message: `${nums} Parents were deleted successfully!` });
+          res.send({ message: `${nums} User_saves were deleted successfully!` });
         })
         .catch(err => {
           res.status(500).send({
             message:
-              err.message || "Some error occurred while removing all parents."
+              err.message || "Some error occurred while removing all User_saves."
           });
     });
 
@@ -357,8 +346,6 @@ userRouter.route('/user_save/:user_saveId')
                 res.json(data);
             }
             else{
-                // err = new Error('Dish ' + id + ' not found');
-                // err.status = 404;
                 res.status(404).json({
                     error : 'User_save ' + id + ' not found'
                 })
@@ -397,7 +384,7 @@ userRouter.route('/user_save/:user_saveId')
             });
           } else {
             res.send({
-              message: `Cannot update User_save with id=${user_purchaseId}. Maybe User_purchase was not found or req.body is empty!`
+              message: `Cannot update User_save with id=${id}. Maybe User_save was not found or req.body is empty!`
             });
           }
         })
@@ -418,17 +405,17 @@ userRouter.route('/user_save/:user_saveId')
         .then(num => {
           if (num == 1) {
             res.send({
-              message: "User_purchase was deleted successfully!"
+              message: "User_save was deleted successfully!"
             });
           } else {
             res.send({
-              message: `Cannot delete User_purchase with id=${id}. Maybe User_purchase was not found!`
+              message: `Cannot delete User_save with id=${id}. Maybe User_save was not found!`
             });
           }
         })
         .catch(err => {
           res.status(500).send({
-            message: "Could not delete User_purchase with id=" + id
+            message: "Could not delete User_save with id=" + id
           });
     });
 
@@ -448,24 +435,20 @@ userRouter.route('/user_discount')
     .catch(err => {
         res.status(500).send({
             message:
-            err.message || "Some error occurred while retrieving parents."
+            err.message || "Some error occurred while retrieving User_discounts."
         });
     });
 
 })
 .post(authenticate.verifyUser, (req, res, next) => {
-    
-    // Create a user_purchase
-    // const emleUserId = req.user.id
+ 
     const data = req.body
 
     const user_discount = {
         chapterId: data.chapterId,
         date : data.date,
         discount_value: data.discount_value,
-    };
-    // console.log('user_purchase', user_purchase)
-    
+    };    
       // Save user_purchase in the database
       User_discount.create(user_discount)
         .then(data => {
@@ -474,7 +457,7 @@ userRouter.route('/user_discount')
         .catch(err => {
           res.status(500).send({
             message:
-              err.message || "Some error occurred while creating the User_purchase."
+              err.message || "Some error occurred while creating the User_discount."
           });
     });
 
@@ -486,12 +469,12 @@ userRouter.route('/user_discount')
         truncate: false
       })
         .then(nums => {
-          res.send({ message: `${nums} Parents were deleted successfully!` });
+          res.send({ message: `${nums} User_discounts were deleted successfully!` });
         })
         .catch(err => {
           res.status(500).send({
             message:
-              err.message || "Some error occurred while removing all parents."
+              err.message || "Some error occurred while removing all User_discounts."
           });
     });
 
@@ -510,8 +493,6 @@ userRouter.route('/user_discount/:user_discountId')
                 res.json(data);
             }
             else{
-                // err = new Error('Dish ' + id + ' not found');
-                // err.status = 404;
                 res.status(404).json({
                     error : 'User_discount ' + id + ' not found'
                 })
@@ -529,7 +510,6 @@ userRouter.route('/user_discount/:user_discountId')
 
     const id = req.params.user_discountIdId;
     const data = req.body
-    // const emleUserId = req.user.id
 
     const user_discount = {
         chapterId: data.chapterId,
@@ -547,7 +527,7 @@ userRouter.route('/user_discount/:user_discountId')
             });
           } else {
             res.send({
-              message: `Cannot update User_discount with id=${user_purchaseId}. Maybe User_purchase was not found or req.body is empty!`
+              message: `Cannot update User_discount with id=${id}. Maybe User_discount was not found or req.body is empty!`
             });
           }
         })
@@ -568,17 +548,17 @@ userRouter.route('/user_discount/:user_discountId')
         .then(num => {
           if (num == 1) {
             res.send({
-              message: "User_purchase was deleted successfully!"
+              message: "User_discount was deleted successfully!"
             });
           } else {
             res.send({
-              message: `Cannot delete User_purchase with id=${id}. Maybe User_purchase was not found!`
+              message: `Cannot delete User_discount with id=${id}. Maybe User_discount was not found!`
             });
           }
         })
         .catch(err => {
           res.status(500).send({
-            message: "Could not delete User_purchase with id=" + id
+            message: "Could not delete User_discount with id=" + id
           });
     });
 

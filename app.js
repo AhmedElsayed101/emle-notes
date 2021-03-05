@@ -7,10 +7,8 @@ const cors = require('cors')
 const dotenv = require('dotenv');
 dotenv.config();
 
-// console.log('DATA_URI', process.env.DATABASE_URL)
 
 var indexRouter = require('./routes/index');
-// var usersRouter = require('./routes/users');
 const parentRouter = require('./routes/emle/parents')
 const usersRouter = require('./routes/emle/users')
 
@@ -23,11 +21,11 @@ var app = express();
 
 
 
-var corsOptions = {
-  origin: "http://localhost:8081"
-};
+// var corsOptions = {
+//   origin: "http://localhost:3000"
+// };
 
-app.use(cors(corsOptions));
+app.use(cors());
 
 
 
@@ -67,13 +65,12 @@ app.use(function(req, res, next) {
 
 // error handler
 app.use(function(err, req, res, next) {
-  // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
 
-  // render the error page
   res.status(err.status || 500);
-  res.render('error');
+  res.json({
+    err : err.message,
+    success : false
+  });
 });
 
 module.exports = app;

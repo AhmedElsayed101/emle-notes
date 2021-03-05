@@ -18,10 +18,10 @@ const Sequelize = require("sequelize");
 // );
 
 const DATABASE_URL = process.env.DATABASE_URL
-// const DATABASE = process.env.DATABASE
-// const HOST = process.env.HOST
-// const USER = process.env.USER
-// const PASSWORD = process.env.PASSWORD
+// // const DATABASE = process.env.DATABASE
+// // const HOST = process.env.HOST
+// // const USER = process.env.USER
+// // const PASSWORD = process.env.PASSWORD
 
 const sequelize = new Sequelize(
   DATABASE_URL,
@@ -46,18 +46,12 @@ const sequelize = new Sequelize(
 
 
 
-// const DATABASE_URL = 'postgres://localhost:5432/YOUR_DB_NAME'
-
-
 const db = {};
 
 db.Sequelize = Sequelize;
 db.sequelize = sequelize;
 
-// db.tutorials = require("./tutorial.js")(sequelize, Sequelize);
-// db.comments = require("./comment.js")(sequelize, Sequelize);
-// db.tags = require("./tag.js")(sequelize, Sequelize);
-// db.users = require("./user.js")(sequelize, Sequelize);
+
 db.emleUsers = require("./emle/user")(sequelize, Sequelize);
 db.users_purchase = require("./emle/user-purchase")(sequelize, Sequelize);
 db.users_save = require("./emle/user-save")(sequelize, Sequelize);
@@ -174,22 +168,5 @@ db.users_save.belongsTo(db.chapters, {
   as: "chapter",
 });
 
-// db.tutorials.hasMany(db.comments, { as: "comments" });
-// db.comments.belongsTo(db.tutorials, {
-//   foreignKey: "tutorialId",
-//   as: "tutorial",
-// });
-
-// db.tags.belongsToMany(db.tutorials, {
-//   through: "tutorial_tag",
-//   as: "tutorials",
-//   foreignKey: "tag_id",
-// });
-
-// db.tutorials.belongsToMany(db.tags, {
-//   through: "tutorial_tag",
-//   as: "tags",
-//   foreignKey: "tutorial_id",
-// });
 
 module.exports = db;
